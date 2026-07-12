@@ -161,10 +161,9 @@
       <section class="hero">
         <div>
           <h1>AI 會議記錄整理網站</h1>
-          <p>上傳會議錄音，後端會呼叫 Whisper 進行語音轉文字，再由 Claude 自動整理摘要、決策與待辦事項。</p>
+          <p>上傳會議錄音，後端會呼叫 Gemini 一次完成語音轉文字、AI 摘要、決策與待辦事項整理。</p>
         </div>
         <div class="hero-actions">
-          <button class="btn success" id="summaryBtn">AI 自動產生摘要</button>
           <button class="btn secondary" id="exportBtn">匯出 JSON</button>
         </div>
       </section>
@@ -183,11 +182,10 @@
           <div class="audio-bar"><div class="audio-wave"></div></div>
 
           <div class="toolbar">
-            <input class="input" id="speakerInput" placeholder="發言人（例如：Amy｜PM）" />
             <input class="input" id="audioFile" type="file" accept="audio/*" />
-            <button class="btn" id="transcribeBtn">上傳並轉錄</button>
+            <button class="btn" id="processBtn">上傳並自動整理（逐字稿＋摘要＋待辦）</button>
           </div>
-          <div id="transcribeError" class="error-text" hidden></div>
+          <div id="processError" class="error-text" hidden></div>
 
           <div class="toolbar">
             <input class="search" id="transcriptSearch" placeholder="搜尋逐字稿關鍵字，例如：發布、設計、API" />
@@ -198,7 +196,6 @@
         <div style="display:grid; gap:18px;">
           <div class="card panel">
             <h2>AI 摘要與決策</h2>
-            <div id="summaryError" class="error-text" hidden></div>
             <div class="summary-list" id="summaryList"></div>
           </div>
 
@@ -219,7 +216,7 @@
           <div class="card panel">
             <h2>待辦事項</h2>
             <div class="action-list" id="actionList"></div>
-            <div class="footer-note">上傳音檔後可自動轉錄逐字稿，再用 AI 自動產生摘要、決策與建議待辦事項。</div>
+            <div class="footer-note">上傳會議錄音後，Gemini 會自動產生逐字稿（含講者與時間戳記）、摘要、決策與建議待辦事項。</div>
           </div>
         </div>
       </section>
@@ -259,10 +256,8 @@
       actionList: document.getElementById('actionList'),
       meetingList: document.getElementById('meetingList'),
       transcriptSearch: document.getElementById('transcriptSearch'),
-      transcribeBtn: document.getElementById('transcribeBtn'),
-      transcribeError: document.getElementById('transcribeError'),
-      summaryBtn: document.getElementById('summaryBtn'),
-      summaryError: document.getElementById('summaryError')
+      processBtn: document.getElementById('processBtn'),
+      processError: document.getElementById('processError')
     };
 
     function statusLabel(status) {
@@ -373,69 +368,32 @@
       el.textContent = message;
     }
 
-    refs.transcribeBtn.addEventListener('click', async () => {
+    refs.processBtn.addEventListener('click', async () => {
       const fileInput = document.getElementById('audioFile');
-      const speaker = document.getElementById('speakerInput').value.trim() || '未指定發言人';
       const file = fileInput.files[0];
-      showError(refs.transcribeError, '');
+      showError(refs.processError, '');
 
       if (!file) {
-        showError(refs.transcribeError, '請先選擇音檔');
+        showError(refs.processError, '請先選擇音檔');
         return;
       }
 
-      refs.transcribeBtn.disabled = true;
-      refs.transcribeBtn.textContent = '轉錄中...';
+      refs.processBtn.disabled = true;
+      refs.processBtn.textContent = '分析中...（依錄音長度可能需要一些時間）';
 
       try {
         const formData = new FormData();
         formData.append('audio', file);
 
-        const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+        const res = await fetch('/api/process-meeting', { method: 'POST', body: formData });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '語音轉文字失敗');
+        if (!res.ok) throw new Error(data.error || '會議錄音處理失敗');
 
-        state.transcripts.unshift({
-          speaker,
-          time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-          text: data.text
-        });
-        fileInput.value = '';
-        renderAll();
-      } catch (err) {
-        showError(refs.transcribeError, err.message);
-      } finally {
-        refs.transcribeBtn.disabled = false;
-        refs.transcribeBtn.textContent = '上傳並轉錄';
-      }
-    });
-
-    refs.summaryBtn.addEventListener('click', async () => {
-      showError(refs.summaryError, '');
-
-      if (!state.transcripts.length) {
-        showError(refs.summaryError, '目前沒有逐字稿內容可供摘要');
-        return;
-      }
-
-      refs.summaryBtn.disabled = true;
-      refs.summaryBtn.textContent = '產生中...';
-
-      try {
-        const transcript = state.transcripts
-          .slice()
-          .reverse()
-          .map(t => `${t.speaker}：${t.text}`)
-          .join('\n');
-
-        const res = await fetch('/api/summarize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transcript })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'AI 摘要產生失敗');
-
+        state.transcripts = data.transcript.map(t => ({
+          speaker: t.speaker || '未識別',
+          time: t.time || '',
+          text: t.text
+        }));
         state.summaries = [
           ...(data.summary ? [{ type: 'summary', text: data.summary }] : []),
           ...data.decisions.map(text => ({ type: 'decision', text }))
@@ -444,12 +402,13 @@
           text: item.text,
           owner: item.owner || '未指派'
         }));
-        renderSummaries();
+        fileInput.value = '';
+        renderAll();
       } catch (err) {
-        showError(refs.summaryError, err.message);
+        showError(refs.processError, err.message);
       } finally {
-        refs.summaryBtn.disabled = false;
-        refs.summaryBtn.textContent = 'AI 自動產生摘要';
+        refs.processBtn.disabled = false;
+        refs.processBtn.textContent = '上傳並自動整理（逐字稿＋摘要＋待辦）';
       }
     });
 
