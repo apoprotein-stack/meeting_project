@@ -2,165 +2,56 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MeetFlow - 會議記錄 Web App 原型</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --panel-2: #1f2937;
-      --card: rgba(255,255,255,0.06);
-      --line: rgba(255,255,255,0.12);
-      --text: #e5eefc;
-      --muted: #94a3b8;
-      --brand: #6366f1;
-      --brand-2: #8b5cf6;
-      --success: #22c55e;
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --shadow: 0 20px 40px rgba(0,0,0,.25);
-      --radius: 18px;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(135deg,#020617 0%, #0f172a 40%, #111827 100%); color: var(--text); }
-    button, input, textarea, select { font: inherit; }
-    .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
-    .sidebar {
-      background: rgba(2,6,23,.68);
-      backdrop-filter: blur(10px);
-      border-right: 1px solid var(--line);
-      padding: 24px 18px;
-      position: sticky;
-      top: 0;
-      height: 100vh;
-    }
-    .brand {
-      display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
-      font-weight: 800; font-size: 1.2rem;
-    }
-    .brand-badge {
-      width: 42px; height: 42px; border-radius: 14px;
-      background: linear-gradient(135deg,var(--brand),var(--brand-2));
-      display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow);
-    }
-    .nav, .mini-list { display: flex; flex-direction: column; gap: 10px; }
-    .nav button, .meeting-chip {
-      width: 100%; text-align: left; border: 1px solid transparent; color: var(--text);
-      background: transparent; padding: 12px 14px; border-radius: 14px; cursor: pointer;
-      transition: .2s ease;
-    }
-    .nav button:hover, .meeting-chip:hover { background: rgba(255,255,255,.05); }
-    .nav button.active { background: linear-gradient(135deg, rgba(99,102,241,.25), rgba(139,92,246,.22)); border-color: rgba(129,140,248,.25); }
-    .label { color: var(--muted); font-size: .82rem; text-transform: uppercase; letter-spacing: .08em; margin: 24px 0 10px; }
-    .meeting-chip { background: rgba(255,255,255,.03); border: 1px solid var(--line); }
-    .meeting-chip strong { display:block; font-size:.95rem; margin-bottom:4px; }
-    .meeting-chip span { color: var(--muted); font-size: .82rem; }
-
-    .main { padding: 28px; }
-    .hero {
-      display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap;
-      margin-bottom: 24px;
-    }
-    .hero h1 { margin: 0 0 10px; font-size: 2rem; }
-    .hero p { margin: 0; color: var(--muted); max-width: 760px; line-height: 1.6; }
-    .hero-actions { display:flex; gap:12px; flex-wrap:wrap; }
-    .btn {
-      border:none; padding: 12px 16px; border-radius: 14px; cursor:pointer; color:white;
-      background: linear-gradient(135deg,var(--brand),var(--brand-2)); box-shadow: var(--shadow);
-      font-weight: 700;
-    }
-    .btn.secondary { background: rgba(255,255,255,.06); border:1px solid var(--line); box-shadow:none; }
-    .btn.success { background: linear-gradient(135deg,#16a34a,#22c55e); }
-
-    .stats { display:grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
-    .card {
-      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-      box-shadow: var(--shadow); backdrop-filter: blur(8px);
-    }
-    .stat { padding: 18px; }
-    .stat small { color: var(--muted); }
-    .stat h3 { margin: 10px 0 0; font-size: 1.8rem; }
-
-    .grid { display:grid; grid-template-columns: 1.2fr .8fr; gap: 18px; }
-    .panel { padding: 18px; }
-    .panel h2 { margin: 0 0 14px; font-size: 1.08rem; }
-    .meeting-header { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
-    .meeting-header .meta { color: var(--muted); font-size: .9rem; }
-    .audio-bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,.07); overflow:hidden; margin: 12px 0 16px; }
-    .audio-wave { width: 64%; height:100%; background: linear-gradient(90deg,var(--brand),var(--brand-2),#22c55e); }
-    .transcript-list, .action-list, .summary-list { display:flex; flex-direction:column; gap:12px; }
-    .transcript-item, .summary-item, .action-item {
-      padding: 14px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid var(--line);
-    }
-    .speaker { display:flex; justify-content:space-between; gap:10px; margin-bottom:6px; }
-    .speaker strong { font-size: .95rem; }
-    .time, .tag, .subtle { color: var(--muted); font-size: .82rem; }
-    .summary-item { display:flex; gap:12px; align-items:flex-start; }
-    .summary-dot { width: 10px; height: 10px; border-radius: 999px; margin-top: 7px; background: var(--brand); flex: 0 0 10px; }
-    .summary-dot.success { background: var(--success); }
-    .summary-dot.warn { background: var(--warn); }
-    .summary-dot.danger { background: var(--danger); }
-
-    .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 14px; }
-    .input, .search, textarea, select {
-      width:100%; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text);
-      border-radius: 12px; padding: 12px 14px; outline: none;
-    }
-    textarea { min-height: 92px; resize: vertical; }
-    .action-row { display:grid; grid-template-columns: 1.3fr .8fr .7fr auto; gap:10px; }
-    .action-item { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
-    .badge { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:.78rem; border:1px solid var(--line); }
-    .badge.todo { color:#bfdbfe; background:rgba(59,130,246,.12); }
-    .badge.progress { color:#fde68a; background:rgba(245,158,11,.12); }
-    .badge.done { color:#bbf7d0; background:rgba(34,197,94,.12); }
-    .empty { text-align:center; color: var(--muted); padding: 24px 12px; }
-    .footer-note { margin-top: 18px; color: var(--muted); font-size: .85rem; }
-
-    @media (max-width: 1180px) {
-      .stats { grid-template-columns: repeat(2,1fr); }
-      .grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 860px) {
-      .app { grid-template-columns: 1fr; }
-      .sidebar { position: relative; height: auto; }
-      .action-row { grid-template-columns: 1fr; }
-      .stats { grid-template-columns: 1fr; }
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MeetFlow - AI 會議記錄整理</title>
+  <meta name="description" content="上傳會議錄音，由 Gemini 自動整理逐字稿、摘要與待辦事項，記錄存進你自己的 Google 雲端硬碟。" />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MeetFlow" />
+  <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-badge">📝</div>
+        <div class="brand-badge"><img src="icons/icon-192.png" alt="" /></div>
         <div>
           <div>MeetFlow</div>
           <div class="subtle">AI 會議記錄平台</div>
         </div>
       </div>
 
-      <div class="nav">
-        <button class="active">總覽 Dashboard</button>
-        <button>即時轉錄</button>
-        <button>AI 摘要</button>
-        <button>待辦追蹤</button>
-        <button>歷史搜尋</button>
-        <button>團隊設定</button>
+      <div class="account-box">
+        <div class="account-status">
+          <span class="dot" id="accountDot"></span>
+          <span id="accountLabel">尚未連結 Google 雲端</span>
+        </div>
+        <button class="btn small secondary" id="signInBtn" style="width:100%;">使用 Google 登入</button>
+        <button class="btn small secondary" id="settingsBtn" style="width:100%; margin-top:8px;">⚙️ Gemini API Key 設定</button>
       </div>
 
-      <div class="label">最近會議</div>
-      <div class="mini-list" id="meetingList"></div>
+      <div class="nav">
+        <button class="active">總覽 Dashboard</button>
+      </div>
+
+      <div class="label">雲端會議記錄</div>
+      <div class="mini-list" id="meetingList">
+        <div class="empty" style="padding:12px 4px;">登入 Google 後會顯示已儲存的會議</div>
+      </div>
     </aside>
 
     <main class="main">
       <section class="hero">
         <div>
-          <h1>會議記錄 Web App 原型</h1>
-          <p>這是一個可互動的單頁 Web App Prototype，包含會議列表、逐字稿、AI 摘要、決策與待辦事項管理。你可以直接拿去當 MVP 前端雛形，再串接 Whisper / Gemini / OpenAI / Zoom / Google Meet API。</p>
+          <h1>AI 會議記錄整理</h1>
+          <p>上傳會議錄音，瀏覽器會直接呼叫 Gemini（使用你自己的 API Key 與額度）完成逐字稿、摘要與待辦整理，並可存進你自己的 Google 雲端硬碟。</p>
         </div>
         <div class="hero-actions">
-          <button class="btn" id="simulateBtn">模擬新增逐字稿</button>
-          <button class="btn success" id="summaryBtn">自動產生摘要</button>
+          <button class="btn secondary" id="newMeetingBtn">新增會議</button>
           <button class="btn secondary" id="exportBtn">匯出 JSON</button>
         </div>
       </section>
@@ -170,13 +61,18 @@
       <section class="grid">
         <div class="card panel">
           <div class="meeting-header">
-            <div>
-              <h2 id="meetingTitle">產品規劃週會</h2>
-              <div class="meta" id="meetingMeta">2026/07/12 14:00－15:00 ・ 12 位參與者</div>
+            <div style="flex:1;">
+              <input class="title-input" id="meetingTitle" value="新的會議記錄" />
+              <div class="meta" id="meetingMeta"></div>
             </div>
-            <div class="badge todo">● 錄音中</div>
           </div>
-          <div class="audio-bar"><div class="audio-wave"></div></div>
+
+          <div class="toolbar">
+            <input class="input" id="audioFile" type="file" accept="audio/*" />
+            <button class="btn" id="processBtn">上傳並自動整理（逐字稿＋摘要＋待辦）</button>
+          </div>
+          <div id="processError" class="error-text" hidden></div>
+
           <div class="toolbar">
             <input class="search" id="transcriptSearch" placeholder="搜尋逐字稿關鍵字，例如：發布、設計、API" />
           </div>
@@ -206,193 +102,44 @@
           <div class="card panel">
             <h2>待辦事項</h2>
             <div class="action-list" id="actionList"></div>
-            <div class="footer-note">Prototype 功能：可新增 / 切換狀態 / 刪除待辦，方便展示 MVP 流程。</div>
+            <div class="footer-note" id="syncNote">上傳會議錄音後，Gemini 會自動產生逐字稿（含講者與時間戳記）、摘要、決策與建議待辦事項。</div>
           </div>
         </div>
       </section>
     </main>
   </div>
 
+  <div class="modal-backdrop" id="settingsModal" hidden>
+    <div class="card modal">
+      <h2>Gemini API Key 設定</h2>
+      <div class="modal-field">
+        <label for="apiKeyInput">Gemini API Key</label>
+        <input class="input" id="apiKeyInput" type="password" placeholder="貼上你的 Gemini API Key" autocomplete="off" />
+        <div class="hint-text">
+          只會存在這台裝置的瀏覽器本機（localStorage），不會傳到任何伺服器。
+          還沒有金鑰？前往
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:#a5b4fc;">Google AI Studio</a>
+          免費申請。
+        </div>
+      </div>
+      <div class="modal-field">
+        <label for="modelInput">Gemini 模型</label>
+        <input class="input" id="modelInput" placeholder="gemini-2.5-flash" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="closeSettingsBtn">取消</button>
+        <button class="btn" id="saveSettingsBtn">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
   <script>
-    const state = {
-      meetings: [
-        { id: 1, name: '產品規劃週會', date: '2026/07/12', time: '14:00－15:00', attendees: 12 },
-        { id: 2, name: '設計評審', date: '2026/07/11', time: '10:00－11:00', attendees: 6 },
-        { id: 3, name: 'Sprint Retro', date: '2026/07/10', time: '16:00－17:00', attendees: 8 }
-      ],
-      transcripts: [
-        { speaker: 'Amy｜PM', time: '14:03', text: '今天先確認新版首頁的發布時程，還有 A/B 測試範圍。' },
-        { speaker: 'Leo｜工程', time: '14:08', text: '前端本週四前可以完成，後端 API 還需要一天整合與驗證。' },
-        { speaker: 'Iris｜設計', time: '14:15', text: '我會今天補齊手機版設計稿，也會把狀態切換元件整理給前端。' },
-        { speaker: 'Amy｜PM', time: '14:20', text: '那我們把測試版整合目標定在週五，並安排下週一跨部門驗收。' }
-      ],
-      summaries: [
-        { type: 'summary', text: '本次會議聚焦首頁改版時程、A/B 測試需求與 API 驗證安排。' },
-        { type: 'decision', text: '測試版整合目標定在週五完成。' },
-        { type: 'decision', text: '下週一進行跨部門驗收。' }
-      ],
-      tasks: [
-        { id: 1, text: '整理 A/B 測試需求', owner: 'Amy', status: 'todo' },
-        { id: 2, text: '完成 API 驗證與整合', owner: 'Leo', status: 'progress' },
-        { id: 3, text: '補齊手機版設計稿', owner: 'Iris', status: 'done' }
-      ]
-    };
-
-    const refs = {
-      stats: document.getElementById('stats'),
-      transcriptList: document.getElementById('transcriptList'),
-      summaryList: document.getElementById('summaryList'),
-      actionList: document.getElementById('actionList'),
-      meetingList: document.getElementById('meetingList'),
-      transcriptSearch: document.getElementById('transcriptSearch')
-    };
-
-    function statusLabel(status) {
-      return status === 'todo' ? '待處理' : status === 'progress' ? '進行中' : '已完成';
-    }
-
-    function renderStats() {
-      const doneCount = state.tasks.filter(t => t.status === 'done').length;
-      const html = [
-        ['總會議數', state.meetings.length],
-        ['逐字稿段落', state.transcripts.length],
-        ['待辦事項', state.tasks.length],
-        ['已完成任務', doneCount]
-      ].map(([label, value]) => `
-        <div class="card stat">
-          <small>${label}</small>
-          <h3>${value}</h3>
-        </div>
-      `).join('');
-      refs.stats.innerHTML = html;
-    }
-
-    function renderMeetings() {
-      refs.meetingList.innerHTML = state.meetings.map(m => `
-        <div class="meeting-chip">
-          <strong>${m.name}</strong>
-          <span>${m.date} ・ ${m.attendees} 人</span>
-        </div>
-      `).join('');
-    }
-
-    function renderTranscripts() {
-      const keyword = refs.transcriptSearch.value.trim();
-      const rows = state.transcripts.filter(t => !keyword || t.text.includes(keyword) || t.speaker.includes(keyword));
-      refs.transcriptList.innerHTML = rows.length ? rows.map(t => `
-        <div class="transcript-item">
-          <div class="speaker">
-            <strong>${t.speaker}</strong>
-            <span class="time">${t.time}</span>
-          </div>
-          <div>${t.text}</div>
-        </div>
-      `).join('') : `<div class="empty">找不到符合的逐字稿內容</div>`;
-    }
-
-    function renderSummaries() {
-      const html = state.summaries.map(s => {
-        const cls = s.type === 'summary' ? '' : 'success';
-        const label = s.type === 'summary' ? '摘要' : '決策';
-        return `
-          <div class="summary-item">
-            <span class="summary-dot ${cls}"></span>
-            <div>
-              <div class="tag">${label}</div>
-              <div>${s.text}</div>
-            </div>
-          </div>
-        `;
-      }).join('');
-      refs.summaryList.innerHTML = html;
-    }
-
-    function renderTasks() {
-      refs.actionList.innerHTML = state.tasks.length ? state.tasks.map(t => `
-        <div class="action-item">
-          <div>
-            <strong>${t.text}</strong>
-            <div class="subtle">負責人：${t.owner}</div>
-          </div>
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <span class="badge ${t.status}">${statusLabel(t.status)}</span>
-            <button class="btn secondary" onclick="cycleTask(${t.id})">切換狀態</button>
-            <button class="btn secondary" onclick="removeTask(${t.id})">刪除</button>
-          </div>
-        </div>
-      `).join('') : '<div class="empty">目前沒有待辦事項</div>';
-    }
-
-    function renderAll() {
-      renderStats();
-      renderMeetings();
-      renderTranscripts();
-      renderSummaries();
-      renderTasks();
-    }
-
-    document.getElementById('simulateBtn').addEventListener('click', () => {
-      const samples = [
-        { speaker: 'Nina｜行銷', text: '我需要在週三前拿到新版畫面，方便準備社群素材。' },
-        { speaker: 'Leo｜工程', text: '登入流程的錯誤訊息，我今晚會再補上 edge case 測試。' },
-        { speaker: 'Amy｜PM', text: '請把首頁 KPI 追蹤事件一起放進這次版本。' }
-      ];
-      const pick = samples[Math.floor(Math.random() * samples.length)];
-      state.transcripts.unshift({ ...pick, time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) });
-      renderAll();
-    });
-
-    document.getElementById('summaryBtn').addEventListener('click', () => {
-      const latest = state.transcripts.slice(0, 3).map(t => t.text).join(' ');
-      state.summaries = [
-        { type: 'summary', text: 'AI 自動整理：最近討論重點包含版本交付、測試補強、設計補件與 KPI 追蹤。' },
-        { type: 'decision', text: '最新逐字稿已納入摘要，建議下一步確認版本驗收名單。' },
-        { type: 'decision', text: '摘要依據最近三段逐字稿生成：' + latest.slice(0, 42) + (latest.length > 42 ? '...' : '') }
-      ];
-      renderSummaries();
-    });
-
-    document.getElementById('addTaskBtn').addEventListener('click', () => {
-      const text = document.getElementById('taskInput').value.trim();
-      const owner = document.getElementById('ownerInput').value.trim() || '未指派';
-      const status = document.getElementById('statusInput').value;
-      if (!text) return alert('請先輸入待辦內容');
-      state.tasks.unshift({ id: Date.now(), text, owner, status });
-      document.getElementById('taskInput').value = '';
-      document.getElementById('ownerInput').value = '';
-      document.getElementById('statusInput').value = 'todo';
-      renderStats();
-      renderTasks();
-    });
-
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'meetflow-demo-data.json';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    });
-
-    refs.transcriptSearch.addEventListener('input', renderTranscripts);
-
-    window.cycleTask = function(id) {
-      const order = ['todo', 'progress', 'done'];
-      state.tasks = state.tasks.map(t => {
-        if (t.id !== id) return t;
-        return { ...t, status: order[(order.indexOf(t.status) + 1) % order.length] };
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
       });
-      renderStats();
-      renderTasks();
     }
-
-    window.removeTask = function(id) {
-      state.tasks = state.tasks.filter(t => t.id !== id);
-      renderStats();
-      renderTasks();
-    }
-
-    renderAll();
   </script>
 </body>
 </html>
