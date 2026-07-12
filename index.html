@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MeetFlow - AI 會議記錄整理</title>
+  <meta name="description" content="上傳會議錄音，由 Gemini 自動整理逐字稿、摘要與待辦事項，記錄存進你自己的 Google 雲端硬碟。" />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MeetFlow" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge"><img src="icons/icon-192.png" alt="" /></div>
+        <div>
+          <div>MeetFlow</div>
+          <div class="subtle">AI 會議記錄平台</div>
+        </div>
+      </div>
+
+      <div class="account-box">
+        <div class="account-status">
+          <span class="dot" id="accountDot"></span>
+          <span id="accountLabel">尚未連結 Google 雲端</span>
+        </div>
+        <button class="btn small secondary" id="signInBtn" style="width:100%;">使用 Google 登入</button>
+        <button class="btn small secondary" id="settingsBtn" style="width:100%; margin-top:8px;">⚙️ Gemini API Key 設定</button>
+      </div>
+
+      <div class="nav">
+        <button class="active">總覽 Dashboard</button>
+      </div>
+
+      <div class="label">雲端會議記錄</div>
+      <div class="mini-list" id="meetingList">
+        <div class="empty" style="padding:12px 4px;">登入 Google 後會顯示已儲存的會議</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="hero">
+        <div>
+          <h1>AI 會議記錄整理</h1>
+          <p>上傳會議錄音，瀏覽器會直接呼叫 Gemini（使用你自己的 API Key 與額度）完成逐字稿、摘要與待辦整理，並可存進你自己的 Google 雲端硬碟。</p>
+        </div>
+        <div class="hero-actions">
+          <button class="btn secondary" id="newMeetingBtn">新增會議</button>
+          <button class="btn secondary" id="exportBtn">匯出 JSON</button>
+        </div>
+      </section>
+
+      <section class="stats" id="stats"></section>
+
+      <section class="grid">
+        <div class="card panel">
+          <div class="meeting-header">
+            <div style="flex:1;">
+              <input class="title-input" id="meetingTitle" value="新的會議記錄" />
+              <div class="meta" id="meetingMeta"></div>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <input class="input" id="audioFile" type="file" accept="audio/*" />
+            <button class="btn" id="processBtn">上傳並自動整理（逐字稿＋摘要＋待辦）</button>
+          </div>
+          <div id="processError" class="error-text" hidden></div>
+
+          <div class="toolbar">
+            <input class="search" id="transcriptSearch" placeholder="搜尋逐字稿關鍵字，例如：發布、設計、API" />
+          </div>
+          <div class="transcript-list" id="transcriptList"></div>
+        </div>
+
+        <div style="display:grid; gap:18px;">
+          <div class="card panel">
+            <h2>AI 摘要與決策</h2>
+            <div class="summary-list" id="summaryList"></div>
+          </div>
+
+          <div class="card panel">
+            <h2>新增待辦事項</h2>
+            <div class="action-row">
+              <input class="input" id="taskInput" placeholder="待辦內容" />
+              <input class="input" id="ownerInput" placeholder="負責人" />
+              <select id="statusInput">
+                <option value="todo">待處理</option>
+                <option value="progress">進行中</option>
+                <option value="done">已完成</option>
+              </select>
+              <button class="btn" id="addTaskBtn">新增</button>
+            </div>
+          </div>
+
+          <div class="card panel">
+            <h2>待辦事項</h2>
+            <div class="action-list" id="actionList"></div>
+            <div class="footer-note" id="syncNote">上傳會議錄音後，Gemini 會自動產生逐字稿（含講者與時間戳記）、摘要、決策與建議待辦事項。</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="settingsModal" hidden>
+    <div class="card modal">
+      <h2>Gemini API Key 設定</h2>
+      <div class="modal-field">
+        <label for="apiKeyInput">Gemini API Key</label>
+        <input class="input" id="apiKeyInput" type="password" placeholder="貼上你的 Gemini API Key" autocomplete="off" />
+        <div class="hint-text">
+          只會存在這台裝置的瀏覽器本機（localStorage），不會傳到任何伺服器。
+          還沒有金鑰？前往
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:#a5b4fc;">Google AI Studio</a>
+          免費申請。
+        </div>
+      </div>
+      <div class="modal-field">
+        <label for="modelInput">Gemini 模型</label>
+        <input class="input" id="modelInput" placeholder="gemini-2.5-flash" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="closeSettingsBtn">取消</button>
+        <button class="btn" id="saveSettingsBtn">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
