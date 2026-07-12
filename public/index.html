@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MeetFlow - 會議記錄 Web App 原型</title>
+  <title>MeetFlow - AI 會議記錄整理網站</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -24,6 +24,7 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(135deg,#020617 0%, #0f172a 40%, #111827 100%); color: var(--text); }
     button, input, textarea, select { font: inherit; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
     .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
     .sidebar {
       background: rgba(2,6,23,.68);
@@ -71,6 +72,7 @@
     }
     .btn.secondary { background: rgba(255,255,255,.06); border:1px solid var(--line); box-shadow:none; }
     .btn.success { background: linear-gradient(135deg,#16a34a,#22c55e); }
+    .btn.small { padding: 8px 12px; font-size: .82rem; }
 
     .stats { display:grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
     .card {
@@ -101,7 +103,8 @@
     .summary-dot.warn { background: var(--warn); }
     .summary-dot.danger { background: var(--danger); }
 
-    .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 14px; }
+    .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 14px; align-items:center; }
+    .toolbar .input, .toolbar .search { width:auto; flex:1; min-width: 140px; }
     .input, .search, textarea, select {
       width:100%; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text);
       border-radius: 12px; padding: 12px 14px; outline: none;
@@ -114,7 +117,9 @@
     .badge.progress { color:#fde68a; background:rgba(245,158,11,.12); }
     .badge.done { color:#bbf7d0; background:rgba(34,197,94,.12); }
     .empty { text-align:center; color: var(--muted); padding: 24px 12px; }
+    .error-text { color: #fca5a5; font-size: .85rem; margin: 8px 0 0; }
     .footer-note { margin-top: 18px; color: var(--muted); font-size: .85rem; }
+    .suggested-item { display:flex; justify-content:space-between; gap:10px; align-items:center; }
 
     @media (max-width: 1180px) {
       .stats { grid-template-columns: repeat(2,1fr); }
@@ -155,12 +160,11 @@
     <main class="main">
       <section class="hero">
         <div>
-          <h1>會議記錄 Web App 原型</h1>
-          <p>這是一個可互動的單頁 Web App Prototype，包含會議列表、逐字稿、AI 摘要、決策與待辦事項管理。你可以直接拿去當 MVP 前端雛形，再串接 Whisper / Gemini / OpenAI / Zoom / Google Meet API。</p>
+          <h1>AI 會議記錄整理網站</h1>
+          <p>上傳會議錄音，後端會呼叫 Whisper 進行語音轉文字，再由 Claude 自動整理摘要、決策與待辦事項。</p>
         </div>
         <div class="hero-actions">
-          <button class="btn" id="simulateBtn">模擬新增逐字稿</button>
-          <button class="btn success" id="summaryBtn">自動產生摘要</button>
+          <button class="btn success" id="summaryBtn">AI 自動產生摘要</button>
           <button class="btn secondary" id="exportBtn">匯出 JSON</button>
         </div>
       </section>
@@ -177,6 +181,14 @@
             <div class="badge todo">● 錄音中</div>
           </div>
           <div class="audio-bar"><div class="audio-wave"></div></div>
+
+          <div class="toolbar">
+            <input class="input" id="speakerInput" placeholder="發言人（例如：Amy｜PM）" />
+            <input class="input" id="audioFile" type="file" accept="audio/*" />
+            <button class="btn" id="transcribeBtn">上傳並轉錄</button>
+          </div>
+          <div id="transcribeError" class="error-text" hidden></div>
+
           <div class="toolbar">
             <input class="search" id="transcriptSearch" placeholder="搜尋逐字稿關鍵字，例如：發布、設計、API" />
           </div>
@@ -186,6 +198,7 @@
         <div style="display:grid; gap:18px;">
           <div class="card panel">
             <h2>AI 摘要與決策</h2>
+            <div id="summaryError" class="error-text" hidden></div>
             <div class="summary-list" id="summaryList"></div>
           </div>
 
@@ -206,7 +219,7 @@
           <div class="card panel">
             <h2>待辦事項</h2>
             <div class="action-list" id="actionList"></div>
-            <div class="footer-note">Prototype 功能：可新增 / 切換狀態 / 刪除待辦，方便展示 MVP 流程。</div>
+            <div class="footer-note">上傳音檔後可自動轉錄逐字稿，再用 AI 自動產生摘要、決策與建議待辦事項。</div>
           </div>
         </div>
       </section>
@@ -231,6 +244,7 @@
         { type: 'decision', text: '測試版整合目標定在週五完成。' },
         { type: 'decision', text: '下週一進行跨部門驗收。' }
       ],
+      suggestedTasks: [],
       tasks: [
         { id: 1, text: '整理 A/B 測試需求', owner: 'Amy', status: 'todo' },
         { id: 2, text: '完成 API 驗證與整合', owner: 'Leo', status: 'progress' },
@@ -244,7 +258,11 @@
       summaryList: document.getElementById('summaryList'),
       actionList: document.getElementById('actionList'),
       meetingList: document.getElementById('meetingList'),
-      transcriptSearch: document.getElementById('transcriptSearch')
+      transcriptSearch: document.getElementById('transcriptSearch'),
+      transcribeBtn: document.getElementById('transcribeBtn'),
+      transcribeError: document.getElementById('transcribeError'),
+      summaryBtn: document.getElementById('summaryBtn'),
+      summaryError: document.getElementById('summaryError')
     };
 
     function statusLabel(status) {
@@ -291,7 +309,7 @@
     }
 
     function renderSummaries() {
-      const html = state.summaries.map(s => {
+      const items = state.summaries.map(s => {
         const cls = s.type === 'summary' ? '' : 'success';
         const label = s.type === 'summary' ? '摘要' : '決策';
         return `
@@ -303,8 +321,22 @@
             </div>
           </div>
         `;
-      }).join('');
-      refs.summaryList.innerHTML = html;
+      });
+
+      const suggested = state.suggestedTasks.map((t, i) => `
+        <div class="summary-item suggested-item">
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <span class="summary-dot warn"></span>
+            <div>
+              <div class="tag">建議待辦</div>
+              <div>${t.text}（${t.owner}）</div>
+            </div>
+          </div>
+          <button class="btn small secondary" onclick="addSuggestedTask(${i})">加入待辦</button>
+        </div>
+      `);
+
+      refs.summaryList.innerHTML = items.concat(suggested).join('') || '<div class="empty">尚未產生摘要</div>';
     }
 
     function renderTasks() {
@@ -331,25 +363,94 @@
       renderTasks();
     }
 
-    document.getElementById('simulateBtn').addEventListener('click', () => {
-      const samples = [
-        { speaker: 'Nina｜行銷', text: '我需要在週三前拿到新版畫面，方便準備社群素材。' },
-        { speaker: 'Leo｜工程', text: '登入流程的錯誤訊息，我今晚會再補上 edge case 測試。' },
-        { speaker: 'Amy｜PM', text: '請把首頁 KPI 追蹤事件一起放進這次版本。' }
-      ];
-      const pick = samples[Math.floor(Math.random() * samples.length)];
-      state.transcripts.unshift({ ...pick, time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) });
-      renderAll();
+    function showError(el, message) {
+      if (!message) {
+        el.hidden = true;
+        el.textContent = '';
+        return;
+      }
+      el.hidden = false;
+      el.textContent = message;
+    }
+
+    refs.transcribeBtn.addEventListener('click', async () => {
+      const fileInput = document.getElementById('audioFile');
+      const speaker = document.getElementById('speakerInput').value.trim() || '未指定發言人';
+      const file = fileInput.files[0];
+      showError(refs.transcribeError, '');
+
+      if (!file) {
+        showError(refs.transcribeError, '請先選擇音檔');
+        return;
+      }
+
+      refs.transcribeBtn.disabled = true;
+      refs.transcribeBtn.textContent = '轉錄中...';
+
+      try {
+        const formData = new FormData();
+        formData.append('audio', file);
+
+        const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '語音轉文字失敗');
+
+        state.transcripts.unshift({
+          speaker,
+          time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+          text: data.text
+        });
+        fileInput.value = '';
+        renderAll();
+      } catch (err) {
+        showError(refs.transcribeError, err.message);
+      } finally {
+        refs.transcribeBtn.disabled = false;
+        refs.transcribeBtn.textContent = '上傳並轉錄';
+      }
     });
 
-    document.getElementById('summaryBtn').addEventListener('click', () => {
-      const latest = state.transcripts.slice(0, 3).map(t => t.text).join(' ');
-      state.summaries = [
-        { type: 'summary', text: 'AI 自動整理：最近討論重點包含版本交付、測試補強、設計補件與 KPI 追蹤。' },
-        { type: 'decision', text: '最新逐字稿已納入摘要，建議下一步確認版本驗收名單。' },
-        { type: 'decision', text: '摘要依據最近三段逐字稿生成：' + latest.slice(0, 42) + (latest.length > 42 ? '...' : '') }
-      ];
-      renderSummaries();
+    refs.summaryBtn.addEventListener('click', async () => {
+      showError(refs.summaryError, '');
+
+      if (!state.transcripts.length) {
+        showError(refs.summaryError, '目前沒有逐字稿內容可供摘要');
+        return;
+      }
+
+      refs.summaryBtn.disabled = true;
+      refs.summaryBtn.textContent = '產生中...';
+
+      try {
+        const transcript = state.transcripts
+          .slice()
+          .reverse()
+          .map(t => `${t.speaker}：${t.text}`)
+          .join('\n');
+
+        const res = await fetch('/api/summarize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transcript })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'AI 摘要產生失敗');
+
+        state.summaries = [
+          ...(data.summary ? [{ type: 'summary', text: data.summary }] : []),
+          ...data.decisions.map(text => ({ type: 'decision', text }))
+        ];
+        state.suggestedTasks = data.actionItems.map(item => ({
+          text: item.text,
+          owner: item.owner || '未指派'
+        }));
+        renderSummaries();
+      } catch (err) {
+        showError(refs.summaryError, err.message);
+      } finally {
+        refs.summaryBtn.disabled = false;
+        refs.summaryBtn.textContent = 'AI 自動產生摘要';
+      }
     });
 
     document.getElementById('addTaskBtn').addEventListener('click', () => {
@@ -390,6 +491,16 @@
       state.tasks = state.tasks.filter(t => t.id !== id);
       renderStats();
       renderTasks();
+    }
+
+    window.addSuggestedTask = function(index) {
+      const suggestion = state.suggestedTasks[index];
+      if (!suggestion) return;
+      state.tasks.unshift({ id: Date.now(), text: suggestion.text, owner: suggestion.owner, status: 'todo' });
+      state.suggestedTasks = state.suggestedTasks.filter((_, i) => i !== index);
+      renderStats();
+      renderTasks();
+      renderSummaries();
     }
 
     renderAll();
